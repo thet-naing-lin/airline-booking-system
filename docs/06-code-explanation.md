@@ -1,4 +1,4 @@
-# Code Explanation — Task 1 to Task 8 + Post-MVP Updates
+# Code Explanation — Task 1 to Task 8 + Post-MVP + Latest Updates
 
 This document provides a line-by-line explanation of every code change made in Tasks 1-8 and post-MVP updates, including the reasoning behind each decision.
 
@@ -1867,18 +1867,18 @@ const removePassenger = (index) => {
 const handleSubmit = async (e) => {
   e.preventDefault();
   setErrors({});
-  setServerError('');
   setSaving(true);
 
   const payload = {
     ...form,
+    travel_date: toStorageDate(form.travel_date),
     pnr: form.pnr || null,
     travel_time: form.travel_time || null,
     // ...
   };
 ```
 
-**Why:** Converts empty strings to `null` for optional fields. Laravel expects `null`, not empty string.
+**Why:** Converts empty strings to `null` for optional fields. Laravel expects `null`, not empty string. Uses `toStorageDate()` to convert dd/mm/yyyy back to yyyy-mm-dd for the API.
 
 ```javascript
   payload.passengers = payload.passengers.map((p) => {
@@ -1893,15 +1893,22 @@ const handleSubmit = async (e) => {
   try {
     if (isEdit) {
       await api.put(`/bookings/${id}`, payload);
+      toast.success('Booking updated successfully!');
     } else {
       await api.post('/bookings', payload);
+      toast.success('Booking created successfully!');
     }
     navigate('/bookings');
   } catch (error) {
     if (error.response?.status === 422) {
-      setErrors(error.response.data.errors || {});
+      const errors = error.response.data.errors || {};
+      setErrors(errors);
+      const firstError = Object.values(errors)[0];
+      if (firstError) {
+        toast.error(firstError[0]);
+      }
     } else {
-      setServerError('Something went wrong. Please try again.');
+      toast.error('Something went wrong. Please try again.');
     }
   }
 };
@@ -1909,9 +1916,10 @@ const handleSubmit = async (e) => {
 
 **Why:**
 - Uses `PUT` for update, `POST` for create
-- Redirects to bookings list on success
-- On 422 (validation error), displays errors next to fields
-- On other errors, shows generic error message
+- Shows toast notification on success before redirecting
+- On 422 (validation error), displays errors next to fields and shows first error in toast
+- On other errors, shows generic error toast
+- Toast notifications provide better UX than inline error messages
 
 ---
 
@@ -1948,7 +1956,7 @@ const fetchBooking = async () => {
 #### Reusable Field Component
 
 ```javascript
-function Field({ label, name, type = 'text', value, onChange, error, required }) {
+function Field({ label, name, type = 'text', placeholder, autoComplete, value, onChange, error, required }) {
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
@@ -1959,6 +1967,8 @@ function Field({ label, name, type = 'text', value, onChange, error, required })
         id={name}
         name={name}
         type={type}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
         value={value}
         onChange={onChange}
         className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -1975,6 +1985,8 @@ function Field({ label, name, type = 'text', value, onChange, error, required })
 
 **Why:**
 - Reusable input component with label, error display
+- `placeholder` — Hint text shown when input is empty (e.g., "dd/mm/yyyy" for dates)
+- `autoComplete` — Controls browser autofill (set to "off" for PNR to prevent unwanted suggestions)
 - `required` adds red asterisk
 - `error` highlights border in red and shows first error message
 - Reduces code duplication in the form
@@ -2007,10 +2019,9 @@ import BookingFormPage from './pages/BookingFormPage';
 │ Departure Location    │ Destination         │
 │ Travel Date           │ Travel Time         │
 │ Airline Name          │ Flight Number       │
-│ PNR                                         │
-│ Contact Name          │ Contact Phone       │
-│ Deposit Amount        │ Total Amount        │
-│ Comment                                     │
+│ PNR                   │ Contact Name        │
+│ Contact Phone         │ Deposit Amount      │
+│ Total Amount          │ Comment             │
 └─────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────┐
@@ -2620,3 +2631,84 @@ After: `Passengers <span className="text-gray-400">{booking.passengers_count}</s
 
 ### Bug Fixes
 - `frontend/src/pages/BookingDetailPage.jsx` — Fixed PNR update to send full passenger data
+
+---
+
+## Latest Updates
+
+### 5. Booking Form Fixes
+
+Fixed PNR field visibility and form submission error.
+
+#### Removed Orphaned State
+
+```javascript
+// Before (broken)
+const [serverError, setServerError] = useState('');
+
+// After (removed)
+// serverError state was never declared, causing runtime error on submit
+```
+
+**Why:** `setServerError('')` was called in `handleSubmit` but the state variable was never declared. This caused a runtime error that prevented the edit form from submitting.
+
+#### Fixed PNR Field Layout
+
+```jsx
+// Before (full-width)
+<div className="sm:col-span-2">
+  <Field label="PNR" name="pnr" ... />
+</div>
+
+// After (inline with other fields)
+<Field label="PNR" name="pnr" ... />
+```
+
+**Why:** Removing `sm:col-span-2` makes PNR the same width as other fields (airline name, flight number, etc.) instead of stretching across both columns.
+
+#### Added Date Format Conversion
+
+```javascript
+function toDisplayDate(date) {
+  if (!date || !date.includes('-')) return date || '';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function toStorageDate(date) {
+  if (!date || !date.includes('/')) return date || '';
+  const [day, month, year] = date.split('/');
+  return `${year}-${month}-${day}`;
+}
+```
+
+**Why:** Converts between dd/mm/yyyy (display) and yyyy-mm-dd (API storage) formats. Dates show as "dd/mm/yyyy" in the form but send "yyyy-mm-dd" to the backend.
+
+---
+
+### 6. Sidebar Footer Update
+
+Changed sidebar footer to show user name and role instead of email.
+
+#### `src/components/Layout.jsx`
+
+```jsx
+// Before
+<div className="text-sm text-gray-400 mb-2 truncate">{user?.email}</div>
+
+// After
+<div className="text-sm font-medium text-white truncate">{user?.name}</div>
+<div className="text-xs text-gray-400 mb-2 truncate capitalize">{user?.role}</div>
+```
+
+**Why:**
+- User name is more recognizable than email for internal staff
+- Role (e.g., "admin", "staff") provides useful context
+- `capitalize` CSS makes "admin" display as "Admin"
+- Name is white/medium weight for emphasis, role is smaller/gray for secondary info
+
+---
+
+### Files Changed (Latest)
+- `frontend/src/pages/BookingFormPage.jsx` — Fixed PNR layout, removed serverError, added date conversion, added toast notifications
+- `frontend/src/components/Layout.jsx` — Sidebar shows name and role instead of email
