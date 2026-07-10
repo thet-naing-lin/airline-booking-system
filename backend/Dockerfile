@@ -35,6 +35,7 @@ RUN composer dump-autoload --optimize
 # Create entrypoint script
 RUN echo '#!/bin/bash' > /var/www/entrypoint.sh && \
     echo 'php artisan migrate --force' >> /var/www/entrypoint.sh && \
+    echo 'php artisan db:seed --force' >> /var/www/entrypoint.sh && \
     echo 'php artisan config:cache' >> /var/www/entrypoint.sh && \
     echo 'php artisan route:cache' >> /var/www/entrypoint.sh && \
     echo 'php artisan view:cache' >> /var/www/entrypoint.sh && \
