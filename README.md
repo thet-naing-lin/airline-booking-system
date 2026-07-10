@@ -13,6 +13,31 @@ Internal booking management application for airline ticketing/travel agency staf
 - `docs/04-mvp-plan.md`
 - `docs/05-progress.md`
 
+## Setup
+
+### Backend (Laravel API)
+```bash
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+API runs at `http://localhost:8000`.
+
+### Frontend (React + Vite)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+App runs at `http://localhost:5173`.
+
+### Environment
+- Backend requires PHP 8.2+ and MySQL (or SQLite for local dev).
+- Frontend reads `VITE_API_URL` from `.env` to point at the backend.
+
 ## Start with Claude Code
 ```bash
 claude
