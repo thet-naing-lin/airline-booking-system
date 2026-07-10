@@ -32,8 +32,8 @@ docs/         Product, schema, API, and MVP specifications
 ## Working Rules
 - Read the relevant documents in `docs/` and `.claude/rules/` before changing a feature.
 - Work on one MVP task at a time. Do not start Excel, dashboards, PDF tickets, notifications, or deployment until the current MVP task is accepted.
-- Before modifying files: inspect the existing code and propose a short plan.
-- Prefer simple, readable code over clever abstractions.
+- Before modifying files: inspect the existing code and propose a short plan with explanation.
+- Prefer simple, readable code over clever abstractions and explain each line of code about why write it.
 - Do not invent database fields or API behavior that conflicts with `docs/02-database-schema.md` or `docs/03-api-contract.md`. Ask first if a business decision is missing.
 - Never put secrets in committed files. Use `.env` and keep `.env.example` updated.
 - Run relevant formatting/tests after changes and state exactly what was run.
