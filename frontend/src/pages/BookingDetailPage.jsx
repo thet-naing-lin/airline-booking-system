@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../lib/api';
 
 const ALLOWED_TRANSITIONS = {
@@ -33,14 +34,12 @@ export default function BookingDetailPage() {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const [newStatus, setNewStatus] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const [pnr, setPnr] = useState('');
   const [updatingPnr, setUpdatingPnr] = useState(false);
-  const [pnrSaved, setPnrSaved] = useState(false);
 
   useEffect(() => {
     fetchBooking();
@@ -52,7 +51,7 @@ export default function BookingDetailPage() {
       setBooking(response.data.data);
       setPnr(response.data.data.pnr || '');
     } catch (err) {
-      setError('Failed to load booking.');
+      toast.error('Failed to load booking.');
     } finally {
       setLoading(false);
     }
@@ -66,8 +65,9 @@ export default function BookingDetailPage() {
       await api.patch(`/bookings/${id}/status`, { status: newStatus });
       setBooking((prev) => ({ ...prev, status: newStatus }));
       setNewStatus('');
+      toast.success('Status updated!');
     } catch (err) {
-      setError('Failed to update status.');
+      toast.error('Failed to update status.');
     } finally {
       setUpdatingStatus(false);
     }
@@ -75,32 +75,38 @@ export default function BookingDetailPage() {
 
   const handlePnrUpdate = async () => {
     setUpdatingPnr(true);
-    setPnrSaved(false);
     try {
-      await api.put(`/bookings/${id}`, {
+      const payload = {
         departure_location: booking.departure_location,
         destination: booking.destination,
         travel_date: booking.travel_date,
-        travel_time: booking.travel_time,
+        travel_time: booking.travel_time || null,
+        airline_name: booking.airline_name || null,
+        flight_number: booking.flight_number || null,
         contact_name: booking.contact_name,
         contact_phone: booking.contact_phone,
+        deposit_amount: booking.deposit_amount || null,
+        total_amount: booking.total_amount || null,
+        comment: booking.comment || null,
         passengers: booking.passengers.map((p) => ({
           id: p.id,
           full_name: p.full_name,
-          nrc_number: p.nrc_number,
-          date_of_birth: p.date_of_birth,
-          phone_number: p.phone_number,
-          passport_number: p.passport_number,
-          ticket_number: p.ticket_number,
-          seat_number: p.seat_number,
+          nrc_number: p.nrc_number || null,
+          date_of_birth: p.date_of_birth || null,
+          phone_number: p.phone_number || null,
+          passport_number: p.passport_number || null,
+          ticket_number: p.ticket_number || null,
+          seat_number: p.seat_number || null,
         })),
         pnr: pnr || null,
-      });
-      setBooking((prev) => ({ ...prev, pnr: pnr || null }));
-      setPnrSaved(true);
-      setTimeout(() => setPnrSaved(false), 2000);
+      };
+
+      const response = await api.put(`/bookings/${id}`, payload);
+      setBooking(response.data.data);
+      toast.success('PNR updated!');
     } catch (err) {
-      setError('Failed to update PNR.');
+      const message = err.response?.data?.message || 'Failed to update PNR.';
+      toast.error(message);
     } finally {
       setUpdatingPnr(false);
     }
@@ -112,17 +118,6 @@ export default function BookingDetailPage() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-gray-500">Loading booking...</div>
-      </div>
-    );
-  }
-
-  if (error && !booking) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-red-600 mb-4">{error}</div>
-        <Link to="/bookings" className="text-blue-600 hover:text-blue-800">
-          ← Back to bookings
-        </Link>
       </div>
     );
   }
@@ -147,12 +142,6 @@ export default function BookingDetailPage() {
         </Link>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 sm:mb-6 text-sm">
-          {error}
-        </div>
-      )}
-
       {/* Main content */}
       <div className="space-y-4 sm:space-y-6">
         {/* Status + PNR + Financial — stacked on mobile, sidebar on desktop */}
@@ -165,7 +154,14 @@ export default function BookingDetailPage() {
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <DetailItem label="Departure" value={booking.departure_location} />
                 <DetailItem label="Destination" value={booking.destination} />
-                <DetailItem label="Travel Date" value={booking.travel_date} />
+                <DetailItem label="Travel Date" value={
+                  booking.travel_date
+                    ? (() => {
+                        const [y, m, d] = booking.travel_date.split('-');
+                        return y && m && d ? `${d}/${m}/${y}` : booking.travel_date;
+                      })()
+                    : '—'
+                } />
                 <DetailItem label="Travel Time" value={booking.travel_time || '—'} />
                 <DetailItem label="Airline" value={booking.airline_name || '—'} />
                 <DetailItem label="Flight Number" value={booking.flight_number || '—'} />
@@ -223,7 +219,12 @@ export default function BookingDetailPage() {
                             {passenger.full_name}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                            {passenger.date_of_birth || '—'}
+                            {passenger.date_of_birth
+                              ? (() => {
+                                  const [y, m, d] = passenger.date_of_birth.split('-');
+                                  return y && m && d ? `${d}/${m}/${y}` : passenger.date_of_birth;
+                                })()
+                              : '—'}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                             {passenger.phone_number || '—'}
@@ -322,9 +323,6 @@ export default function BookingDetailPage() {
                 >
                   {updatingPnr ? 'Saving...' : 'Save PNR'}
                 </button>
-                {pnrSaved && (
-                  <p className="text-sm text-green-600">Saved!</p>
-                )}
               </div>
             </div>
 

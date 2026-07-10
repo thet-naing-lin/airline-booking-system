@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 
+// Convert yyyy-mm-dd to dd/mm/yyyy
+function formatDate(date) {
+  if (!date || !date.includes('-')) return date || '—';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -11,6 +18,7 @@ export default function DashboardPage() {
     deposite: 0,
     paid: 0,
     travelled: 0,
+    cancelled: 0,
   });
   const [recentBookings, setRecentBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +39,7 @@ export default function DashboardPage() {
         deposite: bookings.filter((b) => b.status === 'deposite').length,
         paid: bookings.filter((b) => b.status === 'paid').length,
         travelled: bookings.filter((b) => b.status === 'travelled').length,
+        cancelled: bookings.filter((b) => b.status === 'cancelled').length,
       });
 
       setRecentBookings(bookings.slice(0, 5));
@@ -65,12 +74,13 @@ export default function DashboardPage() {
       </h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <StatCard label="Total" value={stats.total} color="bg-blue-500" />
         <StatCard label="Pending" value={stats.pending} color="bg-gray-400" />
         <StatCard label="Deposite" value={stats.deposite} color="bg-yellow-500" />
         <StatCard label="Paid" value={stats.paid} color="bg-green-500" />
         <StatCard label="Travelled" value={stats.travelled} color="bg-blue-600" />
+        <StatCard label="Cancelled" value={stats.cancelled} color="bg-red-500" />
       </div>
 
       {/* Recent Bookings */}
@@ -109,7 +119,7 @@ export default function DashboardPage() {
                     {booking.departure_location} → {booking.destination}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {booking.travel_date} · {booking.passengers_count} pax
+                    {formatDate(booking.travel_date)} · {booking.passengers_count} pax
                   </div>
                 </Link>
               ))}
@@ -138,7 +148,7 @@ export default function DashboardPage() {
                       {booking.departure_location} → {booking.destination}
                     </td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {booking.travel_date}
+                      {formatDate(booking.travel_date)}
                     </td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
                       {booking.passengers_count}

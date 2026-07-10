@@ -61,8 +61,17 @@ class BookingController extends Controller
             $query->where('destination', $destination);
         }
 
+        // Sorting
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc');
+
+        $allowedSorts = ['created_at', 'travel_date', 'booking_code', 'status'];
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'created_at';
+        }
+
         $perPage = min($request->input('per_page', 20), 100);
-        $bookings = $query->orderByDesc('created_at')->paginate($perPage);
+        $bookings = $query->orderBy($sortBy, $sortDir)->paginate($perPage);
 
         return BookingResource::collection($bookings);
     }

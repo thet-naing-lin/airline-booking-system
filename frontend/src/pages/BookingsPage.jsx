@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { FiArrowUp, FiArrowDown, FiChevronDown } from 'react-icons/fi';
 import api from '../lib/api';
+
+// Convert yyyy-mm-dd to dd/mm/yyyy
+function formatDate(date) {
+  if (!date || !date.includes('-')) return date || '—';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+}
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -36,15 +44,17 @@ export default function BookingsPage() {
   const [travelDate, setTravelDate] = useState('');
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortDir, setSortDir] = useState('desc');
 
   useEffect(() => {
     fetchBookings();
-  }, [page, status, travelDate]);
+  }, [page, status, travelDate, sortBy, sortDir]);
 
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      const params = { page, per_page: 20 };
+      const params = { page, per_page: 20, sort_by: sortBy, sort_dir: sortDir };
       if (search) params.search = search;
       if (status) params.status = status;
       if (travelDate) params.travel_date = travelDate;
@@ -75,6 +85,22 @@ export default function BookingsPage() {
     setStatus('');
     setTravelDate('');
     setPage(1);
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortBy !== field) return <FiChevronDown className="inline ml-1 text-gray-400" />;
+    return sortDir === 'asc'
+      ? <FiArrowUp className="inline ml-1 text-blue-600" />
+      : <FiArrowDown className="inline ml-1 text-blue-600" />;
   };
 
   const hasActiveFilters = status || travelDate;
@@ -214,7 +240,7 @@ export default function BookingsPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <div className="text-sm font-medium text-blue-600">{booking.booking_code}</div>
-                      <div className="text-xs text-gray-500">{booking.travel_date}</div>
+                      <div className="text-xs text-gray-500">{formatDate(booking.travel_date)}</div>
                     </div>
                     <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_STYLES[booking.status]}`}>
                       {booking.status}
@@ -240,7 +266,12 @@ export default function BookingsPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('travel_date')}
+                  >
+                    Date<SortIcon field="travel_date" />
+                  </th>
                   <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Pax</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -260,7 +291,7 @@ export default function BookingsPage() {
                       {booking.departure_location} → {booking.destination}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                      {booking.travel_date}
+                      {formatDate(booking.travel_date)}
                     </td>
                     <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       <div>{booking.contact_name}</div>

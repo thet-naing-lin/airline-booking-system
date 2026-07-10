@@ -1,6 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../lib/api';
+
+// Convert yyyy-mm-dd to dd/mm/yyyy
+function toDisplayDate(date) {
+  if (!date || !date.includes('-')) return date || '';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+// Convert dd/mm/yyyy to yyyy-mm-dd
+function toStorageDate(date) {
+  if (!date || !date.includes('/')) return date || '';
+  const [day, month, year] = date.split('/');
+  if (day.length !== 2 || month.length !== 2 || year.length !== 4) return date;
+  return `${year}-${month}-${day}`;
+}
 
 const EMPTY_PASSENGER = {
   full_name: '',
@@ -37,7 +53,6 @@ export default function BookingFormPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
-  const [serverError, setServerError] = useState('');
 
   useEffect(() => {
     if (isEdit) {
@@ -54,7 +69,7 @@ export default function BookingFormPage() {
         pnr: booking.pnr || '',
         departure_location: booking.departure_location,
         destination: booking.destination,
-        travel_date: booking.travel_date,
+        travel_date: toDisplayDate(booking.travel_date),
         travel_time: booking.travel_time || '',
         airline_name: booking.airline_name || '',
         flight_number: booking.flight_number || '',
@@ -68,7 +83,7 @@ export default function BookingFormPage() {
               id: p.id,
               full_name: p.full_name,
               nrc_number: p.nrc_number || '',
-              date_of_birth: p.date_of_birth || '',
+              date_of_birth: toDisplayDate(p.date_of_birth),
               phone_number: p.phone_number || '',
               passport_number: p.passport_number || '',
               ticket_number: p.ticket_number || '',
@@ -77,7 +92,7 @@ export default function BookingFormPage() {
           : [{ ...EMPTY_PASSENGER }],
       });
     } catch (error) {
-      setServerError('Failed to load booking.');
+      toast.error('Failed to load booking.');
     } finally {
       setLoading(false);
     }
@@ -130,11 +145,11 @@ export default function BookingFormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrors({});
-    setServerError('');
     setSaving(true);
 
     const payload = {
       ...form,
+      travel_date: toStorageDate(form.travel_date),
       pnr: form.pnr || null,
       travel_time: form.travel_time || null,
       airline_name: form.airline_name || null,
@@ -148,7 +163,7 @@ export default function BookingFormPage() {
           ...rest,
           id: _ || undefined,
           nrc_number: rest.nrc_number || null,
-          date_of_birth: rest.date_of_birth || null,
+          date_of_birth: toStorageDate(rest.date_of_birth),
           phone_number: rest.phone_number || null,
           passport_number: rest.passport_number || null,
           ticket_number: rest.ticket_number || null,
@@ -169,15 +184,23 @@ export default function BookingFormPage() {
     try {
       if (isEdit) {
         await api.put(`/bookings/${id}`, payload);
+        toast.success('Booking updated successfully!');
       } else {
         await api.post('/bookings', payload);
+        toast.success('Booking created successfully!');
       }
       navigate('/bookings');
     } catch (error) {
       if (error.response?.status === 422) {
-        setErrors(error.response.data.errors || {});
+        const errors = error.response.data.errors || {};
+        setErrors(errors);
+        // Show first error in toast
+        const firstError = Object.values(errors)[0];
+        if (firstError) {
+          toast.error(firstError[0]);
+        }
       } else {
-        setServerError('Something went wrong. Please try again.');
+        toast.error('Something went wrong. Please try again.');
       }
     } finally {
       setSaving(false);
@@ -197,12 +220,6 @@ export default function BookingFormPage() {
       <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">
         {isEdit ? 'Edit Booking' : 'New Booking'}
       </h1>
-
-      {serverError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 sm:mb-6 text-sm">
-          {serverError}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {/* Booking Fields */}
@@ -229,7 +246,8 @@ export default function BookingFormPage() {
             <Field
               label="Travel Date"
               name="travel_date"
-              type="date"
+              type="text"
+              placeholder="dd/mm/yyyy"
               value={form.travel_date}
               onChange={handleChange}
               error={errors.travel_date}
@@ -260,9 +278,12 @@ export default function BookingFormPage() {
             <Field
               label="PNR"
               name="pnr"
+              type="text"
+              autoComplete="off"
               value={form.pnr}
               onChange={handleChange}
               error={errors.pnr}
+              placeholder="Airline booking reference"
             />
             <Field
               label="Contact Name"
@@ -364,7 +385,8 @@ export default function BookingFormPage() {
                   <Field
                     label="Date of Birth"
                     name="date_of_birth"
-                    type="date"
+                    type="text"
+                    placeholder="dd/mm/yyyy"
                     value={passenger.date_of_birth}
                     onChange={(e) => handlePassengerChange(index, e)}
                     error={errors[`passengers.${index}.date_of_birth`]}
@@ -425,7 +447,7 @@ export default function BookingFormPage() {
   );
 }
 
-function Field({ label, name, type = 'text', value, onChange, error, required }) {
+function Field({ label, name, type = 'text', placeholder, autoComplete, value, onChange, error, required }) {
   return (
     <div>
       <label htmlFor={name} className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -436,6 +458,8 @@ function Field({ label, name, type = 'text', value, onChange, error, required })
         id={name}
         name={name}
         type={type}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
         value={value}
         onChange={onChange}
         className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
