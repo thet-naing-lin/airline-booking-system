@@ -17,6 +17,7 @@ backend/bootstrap/cache/*.php
 .DS_Store
 .vscode/
 .idea/
+docs
 
 # Claude personal settings
 .claude/settings.local.json
