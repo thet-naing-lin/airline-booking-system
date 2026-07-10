@@ -11,7 +11,6 @@
 - Paginate index endpoints; default 20, max 100.
 
 ## React
-- Use TypeScript. Do not use `any`.
 - Keep API calls in `src/services/` or `src/lib/api/`, not inside presentational components.
 - Create reusable types matching API resources.
 - Use controlled forms and show API validation errors next to fields.

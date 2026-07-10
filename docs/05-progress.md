@@ -9,7 +9,7 @@ Task 1 — Initialize Repository
 ## Next Actions
 1. Create the monorepo folders.
 2. Create Laravel API in `backend/`.
-3. Create React/Vite TypeScript app in `frontend/`.
+3. Create React/Vite app in `frontend/`.
 4. Verify both apps run.
 
 ## Decisions Log
