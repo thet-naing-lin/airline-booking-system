@@ -23,9 +23,10 @@ export default function DashboardPage() {
     try {
       const response = await api.get('/bookings', { params: { per_page: 100 } });
       const bookings = response.data.data;
+      const total = response.data.meta?.total ?? bookings.length;
 
       setStats({
-        total: response.data.total,
+        total,
         pending: bookings.filter((b) => b.status === 'pending').length,
         deposite: bookings.filter((b) => b.status === 'deposite').length,
         paid: bookings.filter((b) => b.status === 'paid').length,

@@ -52,10 +52,10 @@ export default function BookingsPage() {
       const response = await api.get('/bookings', { params });
       setBookings(response.data.data);
       setPagination({
-        current_page: response.data.current_page,
-        last_page: response.data.last_page,
-        per_page: response.data.per_page,
-        total: response.data.total,
+        current_page: response.data.meta?.current_page ?? 1,
+        last_page: response.data.meta?.last_page ?? 1,
+        per_page: response.data.meta?.per_page ?? 20,
+        total: response.data.meta?.total ?? 0,
       });
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
