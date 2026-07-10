@@ -33,7 +33,7 @@ class StoreBookingRequest extends FormRequest
             'contact_phone' => ['required', 'string', 'max:20'],
             'deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['nullable', 'in:pending,confirmed,travelled,cancelled,refunded'],
+            'status' => ['nullable', 'in:pending,deposite,paid,travelled,cancelled,refunded'],
             'comment' => ['nullable', 'string'],
             'passengers' => ['required', 'array', 'min:1'],
             'passengers.*.full_name' => ['required', 'string', 'max:255'],

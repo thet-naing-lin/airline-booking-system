@@ -107,14 +107,14 @@ class BookingApiTest extends TestCase
     public function test_index_filters_by_status(): void
     {
         Sanctum::actingAs($this->user);
-        Booking::factory()->confirmed()->create(['created_by' => $this->user->id]);
+        Booking::factory()->paid()->create(['created_by' => $this->user->id]);
         Booking::factory()->cancelled()->create(['created_by' => $this->user->id]);
 
-        $response = $this->getJson('/api/bookings?status=confirmed');
+        $response = $this->getJson('/api/bookings?status=paid');
 
         $response->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.status', 'confirmed');
+            ->assertJsonPath('data.0.status', 'paid');
     }
 
     public function test_index_filters_by_travel_date(): void
@@ -357,15 +357,15 @@ class BookingApiTest extends TestCase
         ]);
 
         $response = $this->patchJson("/api/bookings/{$booking->id}/status", [
-            'status' => 'confirmed',
+            'status' => 'deposite',
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.status', 'confirmed');
+            ->assertJsonPath('data.status', 'deposite');
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
-            'status' => 'confirmed',
+            'status' => 'deposite',
         ]);
     }
 

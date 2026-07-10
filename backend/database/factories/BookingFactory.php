@@ -35,9 +35,14 @@ class BookingFactory extends Factory
         ];
     }
 
-    public function confirmed(): static
+    public function deposite(): static
     {
-        return $this->state(fn(array $attributes) => ['status' => 'confirmed']);
+        return $this->state(fn(array $attributes) => ['status' => 'deposite']);
+    }
+
+    public function paid(): static
+    {
+        return $this->state(fn(array $attributes) => ['status' => 'paid']);
     }
 
     public function travelled(): static

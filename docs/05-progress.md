@@ -1,7 +1,7 @@
 # Progress
 
 ## Current Task
-Task 6 — Booking List
+MVP Complete ✅
 
 ## Completed
 - [x] Task 1 — Initialize Repository
@@ -9,6 +9,9 @@ Task 6 — Booking List
 - [x] Task 3 — Booking Database
 - [x] Task 4 — Booking API
 - [x] Task 5 — Frontend Foundation
+- [x] Task 6 — Booking List
+- [x] Task 7 — Create and Edit Booking
+- [x] Task 8 — Detail and Status
 
 ## Task Details
 
@@ -52,11 +55,40 @@ Task 6 — Booking List
 - Set up React Router with routes
 - Created .env.example for VITE_API_URL
 
-## Next Actions
-1. Create booking list page with pagination
-2. Add search and filter controls
-3. Display status badges
-4. Show passenger count
+### Task 6 — Booking List
+- Created BookingsPage with paginated table
+- Added search input (booking code, PNR, contact, passenger)
+- Added status filter dropdown
+- Added travel date filter
+- Added status badges with colors
+- Shows calculated passenger count
+- Updated App.jsx with /bookings route
+- Updated Layout.jsx with active link highlighting
+
+### Task 7 — Create and Edit Booking
+- Created BookingFormPage (shared for create/edit)
+- Added dynamic passenger rows (add/remove)
+- Added form validation with Laravel error display
+- Added loading state for edit mode
+- Added redirect to bookings list after save
+- Updated App.jsx with /bookings/new and /bookings/:id/edit routes
+
+### Task 8 — Detail and Status
+- Created BookingDetailPage with full booking view
+- Shows all booking fields, contact, passengers
+- Status update with permitted transitions only
+- PNR update for confirmed bookings
+- Financial summary (deposit, total, balance)
+- Updated App.jsx with /bookings/:id route
+
+## After MVP
+- Excel import/export
+- Dashboard analytics
+- User management
+- Audit log
+- PDF tickets/receipts
+- Notifications
+- Deployment
 
 ## Decisions Log
 - React frontend and Laravel API are separate projects in one repository.
@@ -70,8 +102,14 @@ Task 6 — Booking List
 - Money stored as decimal(12,2), never float (Domain Rule #8).
 - Store token in localStorage (not httpOnly cookie).
 - Auth state managed via React Context.
+- Status badges use color coding (yellow=pending, green=confirmed, etc.).
+- Shared form component for create and edit (detects by URL param).
+- Status transitions enforced on frontend (pending→confirmed/cancelled, etc.).
 
 ## Test Results
 - Task 3: 17 tests, 54 assertions
 - Task 4: 39 tests, 141 assertions (all passing)
 - Task 5: Build passes, lint passes
+- Task 6: Build passes
+- Task 7: Build passes
+- Task 8: Build passes

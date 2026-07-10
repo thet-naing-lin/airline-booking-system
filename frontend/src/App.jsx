@@ -4,6 +4,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import BookingsPage from './pages/BookingsPage';
+import BookingFormPage from './pages/BookingFormPage';
+import BookingDetailPage from './pages/BookingDetailPage';
 
 function App() {
   return (
@@ -23,6 +26,10 @@ function App() {
             }
           >
             <Route index element={<DashboardPage />} />
+            <Route path="bookings" element={<BookingsPage />} />
+            <Route path="bookings/new" element={<BookingFormPage />} />
+            <Route path="bookings/:id" element={<BookingDetailPage />} />
+            <Route path="bookings/:id/edit" element={<BookingFormPage />} />
           </Route>
 
           {/* Catch all — redirect to home */}

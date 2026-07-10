@@ -1,6 +1,6 @@
-# Code Explanation — Task 1 to Task 5
+# Code Explanation — Task 1 to Task 8 + Post-MVP Updates
 
-This document provides a line-by-line explanation of every code change made in Tasks 1-5, including the reasoning behind each decision.
+This document provides a line-by-line explanation of every code change made in Tasks 1-8 and post-MVP updates, including the reasoning behind each decision.
 
 ---
 
@@ -1461,6 +1461,764 @@ function App() {
 
 ---
 
+## Task 6 — Booking List
+
+### Goal
+Staff can find bookings.
+
+### Files Created
+
+#### `src/pages/BookingsPage.jsx`
+
+```javascript
+const STATUS_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'travelled', label: 'Travelled' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'refunded', label: 'Refunded' },
+];
+```
+
+**Why:** Defines the status filter dropdown options. Empty value means "all".
+
+```javascript
+const STATUS_STYLES = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  confirmed: 'bg-green-100 text-green-800',
+  travelled: 'bg-blue-100 text-blue-800',
+  cancelled: 'bg-red-100 text-red-800',
+  refunded: 'bg-gray-100 text-gray-800',
+};
+```
+
+**Why:** Color-coded status badges. Each status has a distinct color for quick visual identification.
+
+```javascript
+const [bookings, setBookings] = useState([]);
+const [loading, setLoading] = useState(true);
+const [pagination, setPagination] = useState({
+  current_page: 1,
+  last_page: 1,
+  per_page: 20,
+  total: 0,
+});
+```
+
+**Why:**
+- `bookings` — Array of booking objects from API
+- `loading` — Shows loading state while fetching
+- `pagination` — Tracks current page, last page, and total for pagination controls
+
+```javascript
+const [search, setSearch] = useState('');
+const [status, setStatus] = useState('');
+const [travelDate, setTravelDate] = useState('');
+const [page, setPage] = useState(1);
+```
+
+**Why:** Filter state. Each filter is a separate state variable.
+
+```javascript
+useEffect(() => {
+  fetchBookings();
+}, [page, status, travelDate]);
+```
+
+**Why:** Re-fetches bookings when page, status, or travel date changes. Search is manual (button click) to avoid excessive API calls.
+
+```javascript
+const fetchBookings = async () => {
+  setLoading(true);
+  try {
+    const params = {
+      page,
+      per_page: 20,
+    };
+
+    if (search) params.search = search;
+    if (status) params.status = status;
+    if (travelDate) params.travel_date = travelDate;
+
+    const response = await api.get('/bookings', { params });
+    setBookings(response.data.data);
+    setPagination({
+      current_page: response.data.current_page,
+      last_page: response.data.last_page,
+      per_page: response.data.per_page,
+      total: response.data.total,
+    });
+  } catch (error) {
+    console.error('Failed to fetch bookings:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+**Why:**
+- Builds query params dynamically (only includes non-empty filters)
+- Updates both bookings and pagination state from API response
+- Handles errors gracefully
+
+```javascript
+const handleSearch = (e) => {
+  e.preventDefault();
+  setPage(1);
+  fetchBookings();
+};
+```
+
+**Why:** Search resets to page 1 (new search results might have different pages).
+
+```javascript
+const handleReset = () => {
+  setSearch('');
+  setStatus('');
+  setTravelDate('');
+  setPage(1);
+};
+```
+
+**Why:** Clears all filters and resets to page 1.
+
+---
+
+#### Table Structure
+
+```jsx
+<table className="min-w-full divide-y divide-gray-200">
+  <thead className="bg-gray-50">
+    <tr>
+      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Booking Code
+      </th>
+      {/* ... more columns */}
+    </tr>
+  </thead>
+```
+
+**Why:**
+- `min-w-full` — Table fills available width
+- `divide-y` — Horizontal lines between rows
+- `bg-gray-50` — Light gray header background
+- `uppercase tracking-wider` — Standard table header styling
+
+```jsx
+<td className="px-4 py-3 whitespace-nowrap">
+  <Link
+    to={`/bookings/${booking.id}`}
+    className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+  >
+    {booking.booking_code}
+  </Link>
+</td>
+```
+
+**Why:** Booking code is a link to the detail page (Task 8).
+
+```jsx
+<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+  {booking.departure_location} → {booking.destination}
+</td>
+```
+
+**Why:** Shows route as "Origin → Destination".
+
+```jsx
+<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+  <div>{booking.contact_name}</div>
+  <div className="text-xs text-gray-500">{booking.contact_phone}</div>
+</td>
+```
+
+**Why:** Shows contact name and phone in two lines.
+
+```jsx
+<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">
+  {booking.passengers_count}
+</td>
+```
+
+**Why:** Shows calculated passenger count (Domain Rule #1).
+
+```jsx
+<td className="px-4 py-3 whitespace-nowrap">
+  <span
+    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${STATUS_STYLES[booking.status] || 'bg-gray-100 text-gray-800'}`}
+  >
+    {booking.status}
+  </span>
+</td>
+```
+
+**Why:** Status badge with color coding. `rounded-full` makes it pill-shaped.
+
+```jsx
+<td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+  {booking.pnr || '—'}
+</td>
+```
+
+**Why:** Shows PNR or em-dash if null.
+
+---
+
+#### Pagination
+
+```jsx
+<div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+  <div className="text-sm text-gray-700">
+    Showing{' '}
+    <span className="font-medium">
+      {(pagination.current_page - 1) * pagination.per_page + 1}
+    </span>{' '}
+    to{' '}
+    <span className="font-medium">
+      {Math.min(pagination.current_page * pagination.per_page, pagination.total)}
+    </span>{' '}
+    of <span className="font-medium">{pagination.total}</span> bookings
+  </div>
+```
+
+**Why:** Shows "Showing X to Y of Z bookings" text. Calculates from pagination state.
+
+```jsx
+  <div className="flex gap-2">
+    <button
+      onClick={() => setPage(page - 1)}
+      disabled={page <= 1}
+      className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Previous
+    </button>
+    <span className="px-3 py-1 text-sm text-gray-700">
+      Page {pagination.current_page} of {pagination.last_page}
+    </span>
+    <button
+      onClick={() => setPage(page + 1)}
+      disabled={page >= pagination.last_page}
+      className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Next
+    </button>
+  </div>
+```
+
+**Why:**
+- Previous/Next buttons with disabled states
+- Shows "Page X of Y" text
+- `disabled:opacity-50` — Grayed out when disabled
+- `disabled:cursor-not-allowed` — No pointer cursor when disabled
+
+---
+
+### Files Modified
+
+#### `src/App.jsx`
+
+```javascript
+import BookingsPage from './pages/BookingsPage';
+
+// ...
+
+<Route path="bookings" element={<BookingsPage />} />
+```
+
+**Why:** Adds the `/bookings` route inside the protected layout.
+
+---
+
+#### `src/components/Layout.jsx`
+
+```javascript
+location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href))
+```
+
+**Why:** Active link highlighting works for nested routes. `/bookings/1` still highlights "Bookings" link.
+
+---
+
+## Task 7 — Create and Edit Booking
+
+### Goal
+Staff can manage group bookings.
+
+### Files Created
+
+#### `src/pages/BookingFormPage.jsx`
+
+```javascript
+const EMPTY_PASSENGER = {
+  full_name: '',
+  nrc_number: '',
+  date_of_birth: '',
+  phone_number: '',
+  passport_number: '',
+  ticket_number: '',
+  seat_number: '',
+};
+```
+
+**Why:** Template for new passenger rows. All fields start empty.
+
+```javascript
+const INITIAL_FORM = {
+  pnr: '',
+  departure_location: '',
+  destination: '',
+  travel_date: '',
+  travel_time: '',
+  airline_name: '',
+  flight_number: '',
+  contact_name: '',
+  contact_phone: '',
+  deposit_amount: '',
+  total_amount: '',
+  comment: '',
+  passengers: [{ ...EMPTY_PASSENGER }],
+};
+```
+
+**Why:** Initial form state. Starts with one empty passenger.
+
+```javascript
+const { id } = useParams();
+const isEdit = Boolean(id);
+```
+
+**Why:** Detects create vs edit mode from URL parameter. `/bookings/new` has no `id`, `/bookings/1/edit` has `id`.
+
+```javascript
+const [errors, setErrors] = useState({});
+```
+
+**Why:** Stores Laravel validation errors from the API response.
+
+---
+
+#### Form State Management
+
+```javascript
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  setForm((prev) => ({ ...prev, [name]: value }));
+  // Clear field error on change
+  if (errors[name]) {
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
+  }
+};
+```
+
+**Why:**
+- Updates form state when input changes
+- Clears the field error when user starts typing (better UX)
+
+```javascript
+const handlePassengerChange = (index, e) => {
+  const { name, value } = e.target;
+  setForm((prev) => {
+    const passengers = [...prev.passengers];
+    passengers[index] = { ...passengers[index], [name]: value };
+    return { ...prev, passengers };
+  });
+};
+```
+
+**Why:** Updates a specific passenger's field by index.
+
+---
+
+#### Dynamic Passenger Management
+
+```javascript
+const addPassenger = () => {
+  setForm((prev) => ({
+    ...prev,
+    passengers: [...prev.passengers, { ...EMPTY_PASSENGER }],
+  }));
+};
+```
+
+**Why:** Adds a new empty passenger row.
+
+```javascript
+const removePassenger = (index) => {
+  if (form.passengers.length <= 1) return;
+  setForm((prev) => ({
+    ...prev,
+    passengers: prev.passengers.filter((_, i) => i !== index),
+  }));
+};
+```
+
+**Why:** Removes a passenger row. `length <= 1` prevents removing the last passenger (Domain Rule: at least one required).
+
+---
+
+#### Form Submission
+
+```javascript
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setErrors({});
+  setServerError('');
+  setSaving(true);
+
+  const payload = {
+    ...form,
+    pnr: form.pnr || null,
+    travel_time: form.travel_time || null,
+    // ...
+  };
+```
+
+**Why:** Converts empty strings to `null` for optional fields. Laravel expects `null`, not empty string.
+
+```javascript
+  payload.passengers = payload.passengers.map((p) => {
+    const { id: _, ...rest } = p;
+    return _ ? { id: _, ...rest } : rest;
+  });
+```
+
+**Why:** Removes `undefined` ids (new passengers) but keeps actual ids (existing passengers for update).
+
+```javascript
+  try {
+    if (isEdit) {
+      await api.put(`/bookings/${id}`, payload);
+    } else {
+      await api.post('/bookings', payload);
+    }
+    navigate('/bookings');
+  } catch (error) {
+    if (error.response?.status === 422) {
+      setErrors(error.response.data.errors || {});
+    } else {
+      setServerError('Something went wrong. Please try again.');
+    }
+  }
+};
+```
+
+**Why:**
+- Uses `PUT` for update, `POST` for create
+- Redirects to bookings list on success
+- On 422 (validation error), displays errors next to fields
+- On other errors, shows generic error message
+
+---
+
+#### Edit Mode — Loading Existing Data
+
+```javascript
+useEffect(() => {
+  if (isEdit) {
+    fetchBooking();
+  }
+}, [id]);
+
+const fetchBooking = async () => {
+  const response = await api.get(`/bookings/${id}`);
+  const booking = response.data.data;
+
+  setForm({
+    pnr: booking.pnr || '',
+    departure_location: booking.departure_location,
+    // ...
+    passengers: booking.passengers.map((p) => ({
+      id: p.id,
+      full_name: p.full_name,
+      // ...
+    })),
+  });
+};
+```
+
+**Why:** Loads existing booking data into the form. Each passenger gets its `id` for update tracking.
+
+---
+
+#### Reusable Field Component
+
+```javascript
+function Field({ label, name, type = 'text', value, onChange, error, required }) {
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+          error ? 'border-red-300' : 'border-gray-300'
+        }`}
+      />
+      {error && (
+        <p className="mt-1 text-sm text-red-600">{error[0]}</p>
+      )}
+    </div>
+  );
+}
+```
+
+**Why:**
+- Reusable input component with label, error display
+- `required` adds red asterisk
+- `error` highlights border in red and shows first error message
+- Reduces code duplication in the form
+
+---
+
+### Files Modified
+
+#### `src/App.jsx`
+
+```javascript
+import BookingFormPage from './pages/BookingFormPage';
+
+// ...
+
+<Route path="bookings/new" element={<BookingFormPage />} />
+<Route path="bookings/:id/edit" element={<BookingFormPage />} />
+```
+
+**Why:** Two routes for the same component. `BookingFormPage` detects create vs edit by checking for `id` param.
+
+---
+
+### Form Layout
+
+```
+┌─────────────────────────────────────────────┐
+│ Booking Details                             │
+├─────────────────────────────────────────────┤
+│ Departure Location    │ Destination         │
+│ Travel Date           │ Travel Time         │
+│ Airline Name          │ Flight Number       │
+│ PNR                                         │
+│ Contact Name          │ Contact Phone       │
+│ Deposit Amount        │ Total Amount        │
+│ Comment                                     │
+└─────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────┐
+│ Passengers (2)                + Add Passenger│
+├─────────────────────────────────────────────┤
+│ Passenger 1                      [Remove]   │
+│ Full Name  │ NRC Number │ Date of Birth     │
+│ Phone      │ Passport   │ Ticket │ Seat     │
+├─────────────────────────────────────────────┤
+│ Passenger 2                      [Remove]   │
+│ Full Name  │ NRC Number │ Date of Birth     │
+│ Phone      │ Passport   │ Ticket │ Seat     │
+└─────────────────────────────────────────────┘
+
+[Create Booking]  [Cancel]
+```
+
+---
+
+## Task 8 — Detail and Status
+
+### Goal
+Staff can review one full booking and update its state.
+
+### Files Created
+
+#### `src/pages/BookingDetailPage.jsx`
+
+```javascript
+const ALLOWED_TRANSITIONS = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['travelled', 'cancelled'],
+  cancelled: ['refunded'],
+  travelled: [],
+  refunded: [],
+};
+```
+
+**Why:** Defines which status transitions are allowed. Matches domain rules:
+- `pending` → `confirmed`, `cancelled`
+- `confirmed` → `travelled`, `cancelled`
+- `cancelled` → `refunded`
+- `travelled` → (none)
+- `refunded` → (none)
+
+```javascript
+const [pnr, setPnr] = useState('');
+const [updatingPnr, setUpdatingPnr] = useState(false);
+const [pnrSaved, setPnrSaved] = useState(false);
+```
+
+**Why:** PNR has its own state separate from the booking object. `pnrSaved` shows a success message temporarily.
+
+---
+
+#### Status Update
+
+```javascript
+const handleStatusUpdate = async () => {
+  if (!newStatus || newStatus === booking.status) return;
+
+  setUpdatingStatus(true);
+  try {
+    await api.patch(`/bookings/${id}/status`, { status: newStatus });
+    setBooking((prev) => ({ ...prev, status: newStatus }));
+    setNewStatus('');
+  } catch (err) {
+    setError('Failed to update status.');
+  } finally {
+    setUpdatingStatus(false);
+  }
+};
+```
+
+**Why:**
+- Uses `PATCH` method (partial update)
+- Updates local state immediately (optimistic UI)
+- Clears the dropdown after success
+
+```javascript
+const allowedTransitions = booking ? ALLOWED_TRANSITIONS[booking.status] || [] : [];
+```
+
+**Why:** Gets the allowed transitions for the current status. Empty array means no transitions available.
+
+```jsx
+{allowedTransitions.length > 0 && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Change status to:
+    </label>
+    <div className="flex gap-2">
+      <select
+        value={newStatus}
+        onChange={(e) => setNewStatus(e.target.value)}
+        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Select...</option>
+        {allowedTransitions.map((status) => (
+          <option key={status} value={status}>
+            {STATUS_LABELS[status]}
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={handleStatusUpdate}
+        disabled={!newStatus || updatingStatus}
+        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {updatingStatus ? 'Updating...' : 'Update'}
+      </button>
+    </div>
+  </div>
+)}
+```
+
+**Why:**
+- Only shows the dropdown if transitions are available
+- Dropdown options are filtered by `ALLOWED_TRANSITIONS`
+- Button is disabled until a new status is selected
+
+---
+
+#### PNR Update
+
+```javascript
+const handlePnrUpdate = async () => {
+  setUpdatingPnr(true);
+  setPnrSaved(false);
+  try {
+    await api.put(`/bookings/${id}`, {
+      departure_location: booking.departure_location,
+      destination: booking.destination,
+      travel_date: booking.travel_date,
+      travel_time: booking.travel_time,
+      contact_name: booking.contact_name,
+      contact_phone: booking.contact_phone,
+      passengers: booking.passengers.map((p) => ({ id: p.id })),
+      pnr: pnr || null,
+    });
+    setBooking((prev) => ({ ...prev, pnr: pnr || null }));
+    setPnrSaved(true);
+    setTimeout(() => setPnrSaved(false), 2000);
+  } catch (err) {
+    setError('Failed to update PNR.');
+  } finally {
+    setUpdatingPnr(false);
+  }
+};
+```
+
+**Why:**
+- Uses `PUT` (full update) because the API requires all fields
+- Sends only passenger IDs (not full passenger data)
+- Shows "PNR saved successfully!" for 2 seconds
+- PNR can be updated for any status, but most useful for confirmed bookings
+
+---
+
+#### Page Layout
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ← Back to bookings                    [Edit Booking]   │
+│ BK-20260710-0001                                       │
+├─────────────────────────────────┬───────────────────────┤
+│ Route & Schedule                │ Status                │
+│ Departure: Yangon               │ [Confirmed]           │
+│ Destination: Bangkok            │                       │
+│ Travel Date: 2026-08-20         │ Change status to:     │
+│ Travel Time: 09:30              │ [Select... ▼] [Update]│
+│ Airline: Thai Airways           │                       │
+│ Flight: TG-301                  ├───────────────────────┤
+├─────────────────────────────────┤ PNR                   │
+│ Contact Person                  │ [A7XK2P________]      │
+│ Name: U Aung Min                │ [Save PNR]            │
+│ Phone: 09123456789              │                       │
+├─────────────────────────────────┼───────────────────────┤
+│ Passengers (2)                  │ Financial             │
+│ ┌─────┬─────┬─────┬─────┬─────┐│ Deposit: 300,000      │
+│ │Name │NRC  │Phone│Tkt  │Seat ││ Total: 850,000        │
+│ ├─────┼─────┼─────┼─────┼─────┤│ Balance: 550,000      │
+│ │...  │...  │...  │...  │...  ││                       │
+│ └─────┴─────┴─────┴─────┴─────┘├───────────────────────┤
+├─────────────────────────────────┤ Details               │
+│ Comment                         │ Created by: Admin     │
+│ Window seat if possible         │ Created at: 2026-07-10│
+└─────────────────────────────────┴───────────────────────┘
+```
+
+---
+
+### Files Modified
+
+#### `src/App.jsx`
+
+```javascript
+import BookingDetailPage from './pages/BookingDetailPage';
+
+// ...
+
+<Route path="bookings/:id" element={<BookingDetailPage />} />
+```
+
+**Why:** Adds the detail route. Placed before `/bookings/:id/edit` so React Router matches it correctly.
+
+---
+
 ## Commands Run
 
 ### Task 1
@@ -1501,6 +2259,24 @@ cd frontend
 npm install react-router-dom axios
 npm run build
 npm run lint
+```
+
+### Task 6
+```bash
+cd frontend
+npm run build
+```
+
+### Task 7
+```bash
+cd frontend
+npm run build
+```
+
+### Task 8
+```bash
+cd frontend
+npm run build
 ```
 
 ---
@@ -1555,3 +2331,292 @@ npm run lint
 - `frontend/src/App.jsx` — Updated (Router setup)
 - `frontend/src/main.jsx` — Unchanged (entry point)
 - `frontend/package.json` — Updated (added dependencies)
+
+### Task 6
+- `frontend/src/pages/BookingsPage.jsx` — New (Booking list with search, filters, pagination)
+- `frontend/src/App.jsx` — Updated (Added /bookings route)
+- `frontend/src/components/Layout.jsx` — Updated (Active link highlighting)
+
+### Task 7
+- `frontend/src/pages/BookingFormPage.jsx` — New (Create/edit form with dynamic passengers)
+- `frontend/src/App.jsx` — Updated (Added /bookings/new and /bookings/:id/edit routes)
+
+### Task 8
+- `frontend/src/pages/BookingDetailPage.jsx` — New (Detail view with status update)
+- `frontend/src/App.jsx` — Updated (Added /bookings/:id route)
+
+---
+
+## Post-MVP Updates
+
+### 1. Responsive UI (Mobile to Desktop)
+
+Made all pages responsive across screen sizes.
+
+#### `src/components/Layout.jsx`
+
+```javascript
+const [sidebarOpen, setSidebarOpen] = useState(false);
+```
+
+**Why:** Tracks mobile sidebar open/close state.
+
+```jsx
+{/* Mobile sidebar overlay */}
+{sidebarOpen && (
+  <div
+    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+    onClick={() => setSidebarOpen(false)}
+  />
+)}
+```
+
+**Why:** Dark overlay behind sidebar on mobile. Clicking it closes the sidebar.
+
+```jsx
+<aside
+  className={`fixed inset-y-0 left-0 w-64 bg-gray-800 text-white flex flex-col z-50 transition-transform duration-200 lg:translate-x-0 ${
+    sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+  }`}
+>
+```
+
+**Why:**
+- `lg:translate-x-0` — Always visible on desktop (lg = 1024px+)
+- `-translate-x-full` — Hidden off-screen on mobile by default
+- `translate-x-0` — Slides in when `sidebarOpen` is true
+- `transition-transform` — Smooth slide animation
+
+```jsx
+{/* Mobile header */}
+<header className="bg-white shadow-sm sticky top-0 z-30 lg:hidden">
+  <div className="flex items-center justify-between px-4 py-3">
+    <button onClick={() => setSidebarOpen(true)}>
+      <svg>...</svg> {/* Hamburger icon */}
+    </button>
+  </div>
+</header>
+```
+
+**Why:** Shows hamburger menu on mobile. Hidden on desktop (`lg:hidden`).
+
+---
+
+#### `src/pages/BookingsPage.jsx`
+
+**Mobile filters:**
+```jsx
+<div className="sm:hidden">
+  <form onSubmit={handleSearch} className="p-3">
+    <div className="flex gap-2">
+      <input ... placeholder="Search..." />
+      <button type="submit">Go</button>
+      <button type="button" onClick={() => setShowFilters(!showFilters)}>
+        Filter
+      </button>
+    </div>
+  </form>
+</div>
+```
+
+**Why:** Mobile gets a compact search + filter toggle button. Desktop gets inline filters.
+
+**Mobile card view:**
+```jsx
+<div className="sm:hidden divide-y divide-gray-200">
+  {bookings.map((booking) => (
+    <Link key={booking.id} to={`/bookings/${booking.id}`} className="block p-4">
+      <div className="flex items-start justify-between">
+        <span>{booking.booking_code}</span>
+        <span className={STATUS_STYLES[booking.status]}>{booking.status}</span>
+      </div>
+      <div>{booking.departure_location} → {booking.destination}</div>
+    </Link>
+  ))}
+</div>
+```
+
+**Why:** On mobile, bookings show as cards instead of a table. Better for small screens.
+
+---
+
+#### `src/pages/BookingFormPage.jsx`
+
+```jsx
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+```
+
+**Why:** Single column on mobile, two columns on tablet+.
+
+```jsx
+<button className="w-full sm:w-auto ...">
+  {saving ? 'Saving...' : isEdit ? 'Update Booking' : 'Create Booking'}
+</button>
+```
+
+**Why:** Full-width buttons on mobile, auto-width on desktop.
+
+---
+
+#### `src/pages/BookingDetailPage.jsx`
+
+```jsx
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+  <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+    {/* Main content */}
+  </div>
+  <div className="space-y-4 sm:space-y-6">
+    {/* Sidebar */}
+  </div>
+</div>
+```
+
+**Why:** Single column on mobile, two-column layout on desktop.
+
+---
+
+#### `src/pages/DashboardPage.jsx`
+
+```jsx
+<div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+  <StatCard label="Total" value={stats.total} />
+  <StatCard label="Pending" value={stats.pending} />
+  <StatCard label="Deposite" value={stats.deposite} />
+  <StatCard label="Paid" value={stats.paid} />
+  <StatCard label="Travelled" value={stats.travelled} />
+</div>
+```
+
+**Why:** 2 columns on mobile, 5 columns on desktop for stat cards.
+
+---
+
+### 2. Status Transitions Update
+
+Changed from `confirmed` to `deposite` and `paid` to match business flow.
+
+#### New Status Flow
+```
+pending → deposite → paid → travelled
+    ↑         ↑
+    └─────────┘  (can go back)
+
+deposite → refunded → cancelled
+```
+
+#### Files Updated
+
+| File | Change |
+|---|---|
+| `backend/app/Http/Requests/Api/StoreBookingRequest.php` | `in:pending,deposite,paid,travelled,cancelled,refunded` |
+| `backend/app/Http/Requests/Api/UpdateBookingStatusRequest.php` | Same |
+| `backend/database/factories/BookingFactory.php` | Added `deposite()` and `paid()` states |
+| `backend/tests/Feature/BookingApiTest.php` | Updated test statuses |
+| `frontend/src/pages/BookingsPage.jsx` | Updated STATUS_OPTIONS and STATUS_STYLES |
+| `frontend/src/pages/BookingDetailPage.jsx` | Updated ALLOWED_TRANSITIONS |
+| `frontend/src/pages/DashboardPage.jsx` | Updated stats and colors |
+
+#### Why these transitions are allowed
+
+```javascript
+const ALLOWED_TRANSITIONS = {
+  pending: ['deposite', 'cancelled'],
+  deposite: ['pending', 'paid', 'refunded'],
+  paid: ['deposite', 'travelled'],
+  travelled: [],      // Terminal — customer flew
+  cancelled: [],      // Terminal — booking closed
+  refunded: ['cancelled'], // Can close after refund
+};
+```
+
+| From → To | Allowed | Reason |
+|---|---|---|
+| `pending` ↔ `deposite` | ✅ | Can correct mistakes |
+| `deposite` ↔ `paid` | ✅ | Can correct mistakes |
+| `paid` → `travelled` | ✅ | Mark as complete |
+| `deposite` → `refunded` | ✅ | Process refund |
+| `refunded` → `cancelled` | ✅ | Close booking after refund |
+| `travelled` → anything | ❌ | Already flew, can't undo |
+| `cancelled` → anything | ❌ | Already closed |
+
+---
+
+### 3. PNR Update Fix
+
+Fixed PNR update in detail page to send all passenger data.
+
+#### Before (broken)
+```javascript
+passengers: booking.passengers.map((p) => ({ id: p.id })),
+```
+
+**Why it failed:** Backend requires `full_name` for each passenger.
+
+#### After (fixed)
+```javascript
+passengers: booking.passengers.map((p) => ({
+  id: p.id,
+  full_name: p.full_name,
+  nrc_number: p.nrc_number,
+  date_of_birth: p.date_of_birth,
+  phone_number: p.phone_number,
+  passport_number: p.passport_number,
+  ticket_number: p.ticket_number,
+  seat_number: p.seat_number,
+})),
+```
+
+**Why:** Sends complete passenger data to satisfy backend validation.
+
+---
+
+### 4. Passenger Table Updates
+
+#### Added DOB Column
+
+```jsx
+<th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+  DOB
+</th>
+```
+
+**Why:** Date of birth is important for passenger identification.
+
+#### Fixed Alignment
+
+```jsx
+<th className="... whitespace-nowrap">DOB</th>
+<td className="... whitespace-nowrap">{passenger.date_of_birth || '—'}</td>
+```
+
+**Why:** `whitespace-nowrap` prevents text from wrapping mid-word.
+
+#### Removed Extra Parentheses
+
+Before: `Passengers ({booking.passengers_count})`
+After: `Passengers <span className="text-gray-400">{booking.passengers_count}</span>`
+
+**Why:** Cleaner look with count in lighter color instead of parentheses.
+
+---
+
+## Files Changed Summary (Post-MVP)
+
+### Responsive UI
+- `frontend/src/components/Layout.jsx` — Mobile sidebar with hamburger menu
+- `frontend/src/pages/BookingsPage.jsx` — Mobile card view, collapsible filters
+- `frontend/src/pages/BookingFormPage.jsx` — Responsive form layout
+- `frontend/src/pages/BookingDetailPage.jsx` — Responsive detail layout
+- `frontend/src/pages/DashboardPage.jsx` — Responsive stats and table
+
+### Status Transitions
+- `backend/app/Http/Requests/Api/StoreBookingRequest.php` — Updated statuses
+- `backend/app/Http/Requests/Api/UpdateBookingStatusRequest.php` — Updated statuses
+- `backend/database/factories/BookingFactory.php` — Added deposite/paid states
+- `backend/tests/Feature/BookingApiTest.php` — Updated test data
+- `frontend/src/pages/BookingsPage.jsx` — Updated status options/colors
+- `frontend/src/pages/BookingDetailPage.jsx` — Updated transitions
+- `frontend/src/pages/DashboardPage.jsx` — Updated stats/colors
+
+### Bug Fixes
+- `frontend/src/pages/BookingDetailPage.jsx` — Fixed PNR update to send full passenger data
