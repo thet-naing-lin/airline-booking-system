@@ -4,7 +4,7 @@
 Internal web app for an airline ticketing/travel agency to manage group bookings, passengers, PNRs, deposits, statuses, and Excel import/export. This is **not** a public airline reservation engine and does not connect to airline inventory in the MVP.
 
 ## Stack
-- `frontend/`: React + Vite + TypeScript + Tailwind CSS
+- `frontend/`: React + Vite + Tailwind CSS
 - `backend/`: Laravel API + Sanctum + MySQL
 - Excel: `maatwebsite/excel`
 - Frontend deploy target: Vercel
