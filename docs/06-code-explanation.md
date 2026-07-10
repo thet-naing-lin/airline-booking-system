@@ -1,6 +1,6 @@
-# Code Explanation — Task 1 to Task 4
+# Code Explanation — Task 1 to Task 5
 
-This document provides a line-by-line explanation of every code change made in Tasks 1-4, including the reasoning behind each decision.
+This document provides a line-by-line explanation of every code change made in Tasks 1-5, including the reasoning behind each decision.
 
 ---
 
@@ -1034,6 +1034,433 @@ Sanctum::actingAs($this->user);
 
 ---
 
+## Task 5 — Frontend Foundation
+
+### Goal
+React application shell and API connection.
+
+### Dependencies Installed
+
+```bash
+npm install react-router-dom axios
+```
+
+**Why:**
+- `react-router-dom` — Client-side routing for SPA navigation
+- `axios` — HTTP client for API calls with interceptors
+
+---
+
+### Files Created
+
+#### `frontend/.env.example`
+
+```env
+VITE_API_URL=http://localhost:8000/api
+```
+
+**Why:** Template for the backend API URL. Vite reads `VITE_*` variables and makes them available in `import.meta.env`.
+
+---
+
+#### `src/lib/api.js`
+
+```javascript
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
+```
+
+**Why:**
+- `axios.create()` — Creates a reusable axios instance with base config
+- `baseURL` — Reads from `.env`, falls back to localhost
+- `Accept: application/json` — Ensures Laravel returns JSON errors, not redirects
+
+```javascript
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+**Why:**
+- Request interceptor runs before every API call
+- Automatically attaches the Bearer token from localStorage
+- No need to remember to add the header manually
+
+```javascript
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+**Why:**
+- Response interceptor catches errors globally
+- On 401 (Unauthorized), clears stored token and redirects to login
+- Handles expired/revoked tokens automatically
+
+---
+
+#### `src/context/AuthContext.jsx`
+
+```javascript
+import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../lib/api';
+
+const AuthContext = createContext(null);
+```
+
+**Why:** Creates a React Context to share auth state across all components.
+
+```javascript
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [loading, setLoading] = useState(true);
+```
+
+**Why:**
+- Lazy initialization reads from localStorage on first render
+- `loading` state prevents flash of login page while checking token
+
+```javascript
+useEffect(() => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    setLoading(false);
+    return;
+  }
+
+  api.get('/auth/me')
+    .then((response) => {
+      setUser(response.data.data);
+      localStorage.setItem('user', JSON.stringify(response.data.data));
+    })
+    .catch(() => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+}, []);
+```
+
+**Why:**
+- On app load, checks if the stored token is still valid
+- Calls `/auth/me` to verify the token
+- If invalid, clears storage and sets user to null
+- `loading` becomes false after check completes
+
+```javascript
+const login = async (email, password) => {
+  const response = await api.post('/auth/login', { email, password });
+  const { user: userData, token } = response.data.data;
+
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(userData));
+  setUser(userData);
+
+  return userData;
+};
+```
+
+**Why:**
+- Calls the login API
+- Stores both token and user in localStorage
+- Updates React state so components re-render
+
+```javascript
+const logout = async () => {
+  try {
+    await api.post('/auth/logout');
+  } catch {
+    // Token might already be invalid
+  } finally {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  }
+};
+```
+
+**Why:**
+- Calls logout API to revoke the token on server
+- Clears local storage regardless of API success
+- `try/catch` handles case where token is already invalid
+
+```javascript
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+```
+
+**Why:** Custom hook with error handling. Prevents using auth outside the provider.
+
+---
+
+#### `src/pages/LoginPage.jsx`
+
+```javascript
+const [email, setEmail] = useState('');
+const [password, setPassword] = useState('');
+const [error, setError] = useState('');
+const [loading, setLoading] = useState(false);
+const { login } = useAuth();
+const navigate = useNavigate();
+```
+
+**Why:** Controlled form state. `loading` prevents double-submit. `error` displays API errors.
+
+```javascript
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+
+  try {
+    await login(email, password);
+    navigate('/');
+  } catch (err) {
+    const message = err.response?.data?.message || 'Login failed. Please try again.';
+    setError(message);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+**Why:**
+- `e.preventDefault()` — Prevents page reload
+- Calls `login()` from AuthContext
+- On success, navigates to home page
+- On failure, displays the API error message
+- `finally` ensures loading state is reset
+
+```jsx
+<input
+  id="email"
+  type="email"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  required
+  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+  placeholder="admin@example.com"
+/>
+```
+
+**Why:**
+- Controlled input with `value` and `onChange`
+- `required` for HTML5 validation
+- Tailwind classes for styling
+
+---
+
+#### `src/pages/DashboardPage.jsx`
+
+```javascript
+const { user } = useAuth();
+
+return (
+  <div>
+    <h1 className="text-2xl font-bold text-gray-800 mb-4">Dashboard</h1>
+    <p className="text-gray-600">
+      Welcome back, <span className="font-medium">{user?.name}</span>.
+    </p>
+    <div className="mt-6 bg-white rounded-lg shadow p-6">
+      <p className="text-gray-500">Booking list will be displayed here (Task 6).</p>
+    </div>
+  </div>
+);
+```
+
+**Why:** Placeholder page. Shows the logged-in user's name. Will be replaced in Task 6.
+
+---
+
+#### `src/components/Layout.jsx`
+
+```javascript
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const navigation = [
+  { name: 'Dashboard', href: '/' },
+  { name: 'Bookings', href: '/bookings' },
+];
+```
+
+**Why:** Navigation items defined as data. Easy to add/remove/modify.
+
+```javascript
+export default function Layout() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+```
+
+**Why:** `useLocation()` gets the current path for active link highlighting.
+
+```jsx
+<aside className="fixed inset-y-0 left-0 w-64 bg-gray-800 text-white flex flex-col">
+```
+
+**Why:** Fixed sidebar on the left. 64 = 16rem = 256px wide.
+
+```jsx
+{navigation.map((item) => (
+  <Link
+    key={item.href}
+    to={item.href}
+    className={`block px-3 py-2 rounded-md text-sm font-medium ${
+      location.pathname === item.href
+        ? 'bg-gray-700 text-white'
+        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+    }`}
+  >
+    {item.name}
+  </Link>
+))}
+```
+
+**Why:**
+- Maps navigation items to links
+- Active link gets highlighted background
+- `key` is required by React for lists
+
+```jsx
+<main className="ml-64 p-8">
+  <Outlet />
+</main>
+```
+
+**Why:**
+- `ml-64` — Left margin matches sidebar width
+- `<Outlet />` — Renders child routes (DashboardPage, etc.)
+
+---
+
+#### `src/components/ProtectedRoute.jsx`
+
+```javascript
+export default function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+```
+
+**Why:**
+- Shows loading while checking token
+- Redirects to `/login` if not authenticated
+- Renders children if authenticated
+- `replace` prevents back-button from returning to protected page
+
+---
+
+#### `src/App.jsx`
+
+```javascript
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Public route */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DashboardPage />} />
+          </Route>
+
+          {/* Catch all — redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+```
+
+**Why:**
+- `BrowserRouter` — Enables client-side routing
+- `AuthProvider` — Wraps all routes so auth is available everywhere
+- `/login` — Public route, no auth required
+- `/` — Protected route with Layout wrapper
+- `<Route index>` — Dashboard is the default child route
+- `path="*"` — Catch-all redirects unknown paths to home
+
+---
+
+### Route Structure
+
+```
+/login        → LoginPage (public)
+/             → ProtectedRoute → Layout
+  / (index)   → DashboardPage
+```
+
+### Auth Flow
+
+1. User visits any page
+2. `AuthProvider` checks localStorage for token
+3. If token exists, calls `/auth/me` to verify
+4. If valid, user is set and page renders
+5. If invalid, token is cleared and user sees login page
+6. After login, token is stored and user is redirected to `/`
+
+---
+
 ## Commands Run
 
 ### Task 1
@@ -1066,6 +1493,14 @@ php artisan test
 # Created files manually, then:
 php artisan route:list
 php artisan test
+```
+
+### Task 5
+```bash
+cd frontend
+npm install react-router-dom axios
+npm run build
+npm run lint
 ```
 
 ---
@@ -1108,3 +1543,15 @@ php artisan test
 - `backend/app/Services/BookingService.php` — New
 - `backend/routes/api.php` — Updated
 - `backend/tests/Feature/BookingApiTest.php` — New
+
+### Task 5
+- `frontend/.env.example` — New (VITE_API_URL template)
+- `frontend/src/lib/api.js` — New (Axios client with interceptors)
+- `frontend/src/context/AuthContext.jsx` — New (Auth state management)
+- `frontend/src/pages/LoginPage.jsx` — New (Login form)
+- `frontend/src/pages/DashboardPage.jsx` — New (Placeholder dashboard)
+- `frontend/src/components/Layout.jsx` — New (App shell with sidebar)
+- `frontend/src/components/ProtectedRoute.jsx` — New (Auth guard)
+- `frontend/src/App.jsx` — Updated (Router setup)
+- `frontend/src/main.jsx` — Unchanged (entry point)
+- `frontend/package.json` — Updated (added dependencies)

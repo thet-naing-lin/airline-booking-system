@@ -1,13 +1,14 @@
 # Progress
 
 ## Current Task
-Task 5 — Frontend Foundation
+Task 6 — Booking List
 
 ## Completed
 - [x] Task 1 — Initialize Repository
 - [x] Task 2 — Backend Foundation
 - [x] Task 3 — Booking Database
 - [x] Task 4 — Booking API
+- [x] Task 5 — Frontend Foundation
 
 ## Task Details
 
@@ -41,11 +42,21 @@ Task 5 — Frontend Foundation
 - Added search/filter/pagination
 - Wrote 22 API tests (39 total tests passing)
 
+### Task 5 — Frontend Foundation
+- Installed react-router-dom and axios
+- Created API client with token interceptor
+- Created AuthContext for login/logout/user state
+- Created LoginPage with form
+- Created Layout with sidebar/header
+- Created ProtectedRoute for auth guard
+- Set up React Router with routes
+- Created .env.example for VITE_API_URL
+
 ## Next Actions
-1. Create React app shell with router
-2. Configure Axios API client with VITE_API_URL
-3. Create login page
-4. Create app layout with sidebar/header
+1. Create booking list page with pagination
+2. Add search and filter controls
+3. Display status badges
+4. Show passenger count
 
 ## Decisions Log
 - React frontend and Laravel API are separate projects in one repository.
@@ -57,7 +68,10 @@ Task 5 — Frontend Foundation
 - Use API Resources for consistent response shape.
 - Use Service class for transaction logic (Domain Rule #7).
 - Money stored as decimal(12,2), never float (Domain Rule #8).
+- Store token in localStorage (not httpOnly cookie).
+- Auth state managed via React Context.
 
 ## Test Results
 - Task 3: 17 tests, 54 assertions
 - Task 4: 39 tests, 141 assertions (all passing)
+- Task 5: Build passes, lint passes
