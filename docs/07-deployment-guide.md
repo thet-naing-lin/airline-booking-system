@@ -142,6 +142,9 @@ QUEUE_CONNECTION=database
 LOG_CHANNEL=stack
 LOG_STACK=single
 LOG_LEVEL=info
+
+# SSL for Railway MySQL (required for external connections)
+MYSQL_ATTR_SSL_CA=/etc/ssl/certs/ca-certificates.crt
 ```
 
 **To generate APP_KEY:**
@@ -156,6 +159,8 @@ Copy the output and set it as `APP_KEY` in Render.
 2. Watch the deploy logs for errors
 3. First deploy takes 5-10 minutes (building Docker image)
 4. Once deployed, visit `https://airline-booking-api.onrender.com/up` to verify
+
+> **Note:** Render assigns a PORT automatically (e.g., 28685). The Dockerfile uses `$PORT` so it always listens on the correct port.
 
 ### Step 5: Run Initial Migration & Seed
 In Render dashboard → your service → **"Shell"** tab:
@@ -232,6 +237,10 @@ If backend can't connect to database:
 2. Copy the exact host, port, database, username, password from Railway
 3. Ensure `DB_HOST` doesn't have `http://` prefix (just the hostname)
 4. Check Railway MySQL isn't paused (free tier pauses after inactivity)
+5. **Add SSL env var** - Railway MySQL requires SSL for external connections:
+   ```env
+   MYSQL_ATTR_SSL_CA=/etc/ssl/certs/ca-certificates.crt
+   ```
 
 ### Frontend Shows Blank Page
 If Vercel shows blank page:
@@ -289,6 +298,7 @@ Render free tier services sleep after 15 minutes of inactivity:
 | `DB_DATABASE` | `railway` (from Railway) |
 | `DB_USERNAME` | `root` (from Railway) |
 | `DB_PASSWORD` | (from Railway) |
+| `MYSQL_ATTR_SSL_CA` | `/etc/ssl/certs/ca-certificates.crt` |
 | `SANCTUM_STATEFUL_DOMAINS` | `your-app.vercel.app` |
 
 ### Vercel (Frontend)
