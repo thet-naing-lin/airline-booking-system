@@ -10,12 +10,14 @@ function toDisplayDate(date) {
   return `${day}/${month}/${year}`;
 }
 
-// Convert dd/mm/yyyy to yyyy-mm-dd
+// Convert dd/mm/yyyy or d-m-yyyy to yyyy-mm-dd
 function toStorageDate(date) {
-  if (!date || !date.includes('/')) return date || '';
-  const [day, month, year] = date.split('/');
-  if (day.length !== 2 || month.length !== 2 || year.length !== 4) return date;
-  return `${year}-${month}-${day}`;
+  if (!date) return '';
+  // Normalize: accept both / and - separators, with or without leading zeros
+  const match = date.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (!match) return date;
+  const [, day, month, year] = match;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 const EMPTY_PASSENGER = {
