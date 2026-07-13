@@ -250,7 +250,10 @@ export default function BookingsPage() {
                     {booking.departure_location} → {booking.destination}
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{booking.contact_name}</span>
+                    <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-800 px-2 py-0.5 rounded font-medium">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                      {booking.contact_name}
+                    </span>
                     <span>{booking.passengers_count} pax</span>
                   </div>
                   {booking.pnr && (
@@ -293,9 +296,12 @@ export default function BookingsPage() {
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       {formatDate(booking.travel_date)}
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                      <div>{booking.contact_name}</div>
-                      <div className="text-xs text-gray-500">{booking.contact_phone}</div>
+                    <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap text-sm">
+                      <div className="inline-flex items-center gap-1.5 bg-purple-50 text-purple-800 px-2.5 py-1 rounded-md font-medium">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        {booking.contact_name}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">{booking.contact_phone}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">
                       {booking.passengers_count}
